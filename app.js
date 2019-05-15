@@ -18,7 +18,7 @@ var svg = d3
 
 var chart = svg.append('g');
 
-d3.csv('cleanedData.csv', function(err, cleanedData) {
+d3.csv('data.csv', function(err, cleanedData) {
   if (err) throw err;
 
   cleanedData.forEach(function(data) {
