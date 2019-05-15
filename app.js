@@ -1,128 +1,106 @@
-// margins and area
+// // margins and dimensions
 var svgWidth = 960;
 var svgHeight = 500;
 
 var margin = {top: 20, right: 40, bottom: 60, left: 100};
 
-var width = svgWidth - margin.left - margin.right;
-var height = svgHeight - margin.top - margin.bottom;
+var chartWidth = svgWidth - margin.left - margin.right;
+var chartHeight = svgHeight - margin.top - margin.bottom;
 
 // SVG wrapper, append SVG group, and shift margins
-var svg = d3
-  .select('.chart')
-  .append('svg')
-  .attr('width', svgWidth)
-  .attr('height', svgHeight)
-  .append('g')
-  .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+// scatterplot
+var svg = d3.select("#scatter")
+    .append("svg")
+    .attr("width", svgWidth)
+    .attr("height", svgHeight);
 
-var chart = svg.append('g');
+var chartGroup = svg.append("g")
+    .attr("transform",`translate(${margin.left},${margin.top})`);
 
-d3.csv('cleanedData.csv', function(err, cleanedData) {
-  if (err) throw err;
-
-  cleanedData.forEach(function(data) {
-    data.povertyPercentage = +data.povertyPercentage;
-    data.noCoveragePer = +data.noCoveragePer;
-  });
-
-  // Scale functions
-  var yLinearScale = d3.scaleLinear().range([height, 0]);
-
-  var xLinearScale = d3.scaleLinear().range([0, width]);
-
-  // Create axis functions
-  var bottomAxis = d3.axisBottom(xLinearScale);
-  var leftAxis = d3.axisLeft(yLinearScale);
-
-  // Scale the domain
-  xLinearScale.domain([
-    7,
-    d3.max(cleanedData, function(data) {
-      return +data.povertyPercentage;
-    }),
-  ]);
-  yLinearScale.domain([
-    0,
-    d3.max(cleanedData, function(data) {
-      return +data.noCoveragePer * 1.2;
-    }),
-  ]);
-
-  var toolTip = d3
-    .tip()
-    .attr('class', 'tooltip')
-    .offset([80, -60])
-    .html(function(data) {
-      var bandName = data.State;
-      var hairLength = +data.povertyPercentage;
-      var numHits = +data.noCoveragePer;
-      return (
-        bandName + '<br> % Poverty: ' + hairLength + '<br> % No Care: ' + numHits
-      );
+d3.csv("data.csv", function(err, censusRecord){
+    if(err) throw err;
+    censusRecord.forEach(function(record){
+        record.smokes = +record.smokes;
+        record.age = +record.age;
+        record.poverty = +record.poverty;
+        record.healthcare = +record.healthcare;
+        record.obesity = +record.obesity;
     });
+    
+    // print census record 
+    console.log(censusRecord)
+    
+    // scale functions for X
+    var xLinearScale = d3.scaleLinear()
+        .domain([d3.min(censusRecord, d=>d["poverty"]-1),
+        d3.max(censusRecord,d=>d["poverty"])])
+        .range([0,chartWidth]);
 
-  chart.call(toolTip);
+    console.log("x-axis data");
+    console.log(d3.min(censusRecord, d=>d["poverty"]));
+    console.log(d3.max(censusRecord, d=>d["poverty"]));
+    console.log("y-axis data");
+    console.log(d3.min(censusRecord, d=>d["healthcare"]));
+    console.log(d3.max(censusRecord, d=>d["healthcare"]));
+    
+    console.log(d3.max(censusRecord, d=>d["obesity"]));
+    console.log(d3.min(censusRecord, d=>d["obesity"]));
 
-  chart
-    .selectAll('circle')
-    .data(cleanedData)
-    .enter()
-    .append('circle')
-    .attr('cx', function(data, index) {
-      return xLinearScale(data.povertyPercentage);
-    })
-    .attr('cy', function(data, index) {
-      return yLinearScale(data.noCoveragePer);
-    })
-    .attr('r', '15')
-    .attr('fill', 'pink')
-    .on('click', function(data) {
-      toolTip.show(data);
-    })
-    // onmouseout event
-    .on('mouseout', function(data, index) {
-      toolTip.hide(data);
-    });
+    // scale functions for Y
+    var yLinearScale = d3.scaleLinear()
+        .domain([d3.min(censusRecord, d=>d["healthcare"]-1),
+            d3.max(censusRecord, d=>d["healthcare"])])
+        .range([chartHeight,0]);
 
-  chart
-    .append('g')
-    .attr('transform', `translate(0, ${height})`)
+    var bottomAxis = d3.axisBottom(xLinearScale);
+    var leftAxis = d3.axisLeft(yLinearScale);
+
+    var xAxis = chartGroup.append("g")
+    .classed("x-axis", true)
+    .attr("transform", `translate(0, ${chartHeight})`)
     .call(bottomAxis);
 
-  chart.append('g').call(leftAxis);
+    // append Y-axis
+    chartGroup.append("g")
+    .call(leftAxis);
 
-  svg.selectAll(".dot")
-  .data(cleanedData)
-  .enter()
-  .append("text")
-  .text(function(data) { return data.Abbrv; })
-  .attr('x', function(data) {
-    return xLinearScale(data.povertyPercentage);
-  })
-  .attr('y', function(data) {
-    return yLinearScale(data.noCoveragePer);
-  })
-  .attr("font-size", "9px")
-  .attr("fill", "purple")
-  .style("text-anchor", "middle");
+    var gdots =  chartGroup.selectAll("g.dot")
+        .data(censusRecord)
+        .enter()
+        .append('g');
 
-  chart
-    .append('text')
-    .attr('transform', 'rotate(-90)')
-    .attr('y', 0 - margin.left + 40)
-    .attr('x', 0 - height / 2)
-    .attr('dy', '1em')
-    .attr('class', 'axisText')
-    .text('Lacks Healthcare (%)');
+    gdots.append("circle")
+        .attr("cx", d => xLinearScale(d["poverty"]))
+        .attr("cy", d => yLinearScale(d["healthcare"]))
+        .attr("r", d=>d.obesity / 2)
+        .attr("fill", "steelblue")
+        .attr("opacity", ".5");
 
-  // Append x-axis labels
-  chart
-    .append('text')
-    .attr(
-      'transform',
-      'translate(' + width / 2 + ' ,' + (height + margin.top + 30) + ')',
-    )
-    .attr('class', 'axisText')
-    .text('In Poverty (%)');
+    gdots.append("text").text(d=>d.abbr)
+        .attr("x", d => xLinearScale(d.poverty)-4)
+        .attr("y", d => yLinearScale(d.healthcare)+2)
+        .style("font-size",".6em")
+        .classed("fill-text", true);
+
+    console.log(d => xLinearScale(d.poverty));
+    console.log(d => yLinearScale(d.healthcare));
+
+    // Create group for x- axis labels
+  var labelsGroup = chartGroup.append("g")
+    .attr("transform", `translate(${chartWidth / 2}, ${chartHeight + 20})`);
+
+  var censusRecordLabel = labelsGroup.append("text")
+    .attr("x", 0)
+    .attr("y", 20)
+    .attr("value", "poverty") // value to grab for event listener
+    .classed("active", true)
+    .text("Poverty Vs. Healthcare");
+
+    chartGroup.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("y", 0 - margin.left)
+    .attr("x", 0 - (chartHeight / 2))
+    .attr("dy", "1em")
+    .classed("axis-text", true)
+    .text("Healthcare");
 });
